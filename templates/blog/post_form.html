@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="card card-minimal mb-5 border-0 bg-card shadow-sm p-4 border-main" style="border: 1px solid var(--border-color) !important;">
+        <div class="card-body">
+            <h2 class="fw-bold mb-4" style="letter-spacing: -0.5px;">
+                {% if object %}Edit Story{% else %}Write a Story{% endif %}
+            </h2>
+            <form method="POST">
+                {% csrf_token %}
+                <fieldset class="form-group mb-4">
+                    <!-- Basic form styling via Bootstrap, we can rely on crispy-forms if installed, but here we style directly or let Django render -->
+                    <div class="form-modern">
+                        {{ form.as_p }}
+                    </div>
+                </fieldset>
+                <div class="form-group d-flex justify-content-end gap-2">
+                    <a href="{% url 'blog-home' %}" class="btn btn-light btn-modern">Cancel</a>
+                    <button class="btn btn-dark btn-modern px-4" type="submit">
+                        {% if object %}Save Changes{% else %}Publish{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Additional styles to clean up django's default form render -->
+    <!-- EasyMDE Markdown Editor -->
+    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+    <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const contentArea = document.getElementById('id_content');
+            if (contentArea) {
+                // Remove required attribute to prevent "form control is not focusable" error
+                // as EasyMDE hides the original textarea
+                contentArea.removeAttribute('required');
+                
+                const easyMDE = new EasyMDE({
+                    element: contentArea,
+                    spellChecker: false,
+                    placeholder: "Write your story using Markdown (e.g., # Header, **Bold**, *Italic*)...",
+                    status: ["lines", "words"],
+                    minHeight: "300px",
+                    autosave: {
+                        enabled: true,
+                        uniqueId: "post_editor_{{ object.id|default:'new' }}",
+                    },
+                    sideBySideFullscreen: false, // Prevent jumping to fullscreen when using side-by-side
+                    toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "image", "|", "preview", "side-by-side", "|", "guide"],
+                    uploadImage: true,
+                    imageUploadEndpoint: "{% url 'upload-image' %}",
+                    imageUploadFunction: function(file, onSuccess, onError) {
+                        const formData = new FormData();
+                        formData.append('image', file);
+                        fetch("{% url 'upload-image' %}", {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.data && data.data.filePath) {
+                                onSuccess(data.data.filePath);
+                            } else {
+                                onError(data.error || "Upload failed");
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Upload error:", err);
+                            onError("Upload error");
+                        });
+                    }
+                });
+            }
+        });
+    </script>
+
+    <style>
+        .form-modern p {
+            margin-bottom: 1.5rem;
+        }
+        .form-modern label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 0.9rem;
+        }
+        .form-modern input[type="text"],
+        .form-modern textarea,
+        .form-modern select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+        .form-modern input[type="text"]:focus,
+        .form-modern textarea:focus,
+        .form-modern select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+        }
+        .form-modern .helptext {
+            display: block;
+            margin-top: 0.4rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* EasyMDE Dark Mode Overrides */
+        [data-theme="dark"] .editor-toolbar {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+        }
+        [data-theme="dark"] .editor-toolbar button {
+            color: var(--text-main) !important;
+        }
+        [data-theme="dark"] .editor-toolbar button:hover,
+        [data-theme="dark"] .editor-toolbar button.active {
+            background-color: var(--border-color);
+        }
+        [data-theme="dark"] .CodeMirror {
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            border-color: var(--border-color);
+        }
+        [data-theme="dark"] .CodeMirror-cursor {
+            border-left: 1px solid var(--text-main);
+        }
+        [data-theme="dark"] .editor-preview-side {
+            background-color: var(--card-bg);
+            color: var(--text-main);
+            border-color: var(--border-color);
+        }
+        [data-theme="dark"] .editor-statusbar {
+            color: var(--text-muted);
+        }
+        .editor-toolbar {
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+        }
+        .CodeMirror {
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1rem;
+        }
+
+        /* Fix Fullscreen and Side-by-Side Bugs */
+        .editor-toolbar.fullscreen,
+        .CodeMirror-fullscreen,
+        .editor-preview-side.editor-preview-active-side {
+            z-index: 2500 !important; /* Ensure it stays above everything, including navbar */
+            background-color: var(--bg-color) !important;
+        }
+        .editor-toolbar.fullscreen {
+            border-radius: 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .CodeMirror-fullscreen {
+            top: 50px !important; /* Adjust for toolbar height */
+        }
+        
+        /* Dark mode tweaks for fullscreen */
+        [data-theme="dark"] .editor-toolbar.fullscreen,
+        [data-theme="dark"] .CodeMirror-fullscreen {
+            background-color: var(--bg-color) !important;
+        }
+    </style>
+{% endblock %}

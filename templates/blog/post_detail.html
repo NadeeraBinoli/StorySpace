@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+
+{% block title %}{{ object.title }} - StorySpace{% endblock %}
+
+{% block content %}
+    <article class="card card-minimal mb-5 border-0 reveal">
+        <div class="card-body p-4 p-md-5">
+            {% if object.category %}
+                <div class="mb-4">
+                    <span class="badge-subtle text-primary py-2 px-3 border-main" style="border: 1px solid transparent;">
+                        <i class="bi bi-tag-fill me-2"></i>{{ object.category.name }}
+                    </span>
+                </div>
+            {% endif %}
+            
+            <h2 class="fw-bold mb-4 text-main" style="letter-spacing: -1px; line-height: 1.2;">{{ object.title }}</h2>
+            
+            {% if object.image and object.image.name != 'default_post.jpg' %}
+            <div class="mb-5 rounded-5 overflow-hidden shadow-sm border border-main bg-card" style="aspect-ratio: 16/9;">
+                <img src="{{ object.image.url }}" class="w-100 h-100 object-fit-cover loading" 
+                     alt="{{ object.title }}" loading="lazy"
+                     onload="this.classList.remove('loading')">
+            </div>
+            {% endif %}
+            
+            <div class="d-flex align-items-center mb-5 py-4 border-top border-bottom border-main">
+                <div class="position-relative me-3">
+                    <div class="rounded-circle avatar-gradient d-flex align-items-center justify-content-center text-white shadow-sm border border-2 border-white {% if object.author.profile.image and object.author.profile.image.name != 'default.jpg' %}d-none{% endif %}" style="width: 56px; height: 56px;">
+                        <span class="fw-bold fs-4">{{ object.author.username|make_list|first|upper }}</span>
+                    </div>
+                    {% if object.author.profile.image and object.author.profile.image.name != 'default.jpg' %}
+                        <img src="{{ object.author.profile.image.url }}" class="rounded-circle shadow-sm border border-2 border-white" style="width: 56px; height: 56px; object-fit: cover;" onerror="this.classList.add('d-none'); this.previousElementSibling.classList.remove('d-none');">
+                    {% endif %}
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-bold text-main fs-5">{{ object.author.username }}</div>
+                    <div class="text-muted d-flex align-items-center gap-2 small">
+                        <span><i class="bi bi-calendar-event me-1"></i>{{ object.date_posted|date:"M d, Y" }}</span>
+                        <span>·</span>
+                        <span><i class="bi bi-clock me-1"></i>{% with count=object.content|wordcount %}{% widthratio count 200 1 %}{% endwith %} min read</span>
+                        <span>·</span>
+                        <span><i class="bi bi-eye me-1"></i>{{ object.views }} views</span>
+                    </div>
+                </div>
+                {% if object.author == user %}
+                    <div class="d-flex gap-2">
+                        <a class="btn btn-outline-dark btn-sm rounded-pill px-3 border-main" href="{% url 'post-update' object.id %}">
+                            <i class="bi bi-pencil me-1"></i>Edit
+                        </a>
+                        <a class="btn btn-outline-danger btn-sm rounded-pill px-3" href="{% url 'post-delete' object.id %}">
+                            <i class="bi bi-trash me-1"></i>Delete
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div id="article-content-raw" style="display: none;">{{ object.content }}</div>
+            <div class="article-content fs-6 text-main" style="line-height: 1.7; letter-spacing: normal;"></div>
+            
+            <div class="mt-5 pt-5 border-top border-main d-flex justify-content-between align-items-center">
+                <div class="d-flex gap-3">
+                    <button id="like-btn" class="btn {% if is_liked %}btn-primary text-white{% else %}btn-light{% endif %} rounded-pill btn-modern px-3 py-2">
+                        <i class="bi bi-hand-thumbs-up{% if is_liked %}-fill{% endif %} me-2"></i><span id="like-count">{{ object.likes.count }}</span>
+                    </button>
+                    <button class="btn btn-light rounded-pill btn-modern px-3 py-2">
+                        <i class="bi bi-chat me-2"></i><span id="comment-count-badge">{{ object.comments.count }}</span>
+                    </button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button id="share-btn" class="btn btn-light rounded-circle shadow-sm bg-card border-main text-main" style="width: 40px; height: 40px;" title="Share Story">
+                        <i class="bi bi-share"></i>
+                    </button>
+                    <button id="bookmark-btn" class="btn {% if is_bookmarked %}btn-primary text-white{% else %}btn-light{% endif %} rounded-circle shadow-sm bg-card border-main text-main" style="width: 40px; height: 40px;" title="Bookmark Story">
+                        <i class="bi bi-bookmark{% if is_bookmarked %}-fill{% endif %}"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </article>
+
+    <!-- Comments Section -->
+    <div class="card card-minimal mb-5 border-0 bg-card reveal" style="border: 1px solid var(--border-color) !important;">
+        <div class="card-body p-4 p-md-5">
+            <h3 class="fw-bold mb-5 h5 d-flex align-items-center">
+                <i class="bi bi-chat-left-text me-3 text-primary"></i>Responses (<span id="comment-count-header">{{ object.comments.count }}</span>)
+            </h3>
+            
+            <!-- Comment Form -->
+            <div class="mb-5 bg-card p-4 rounded-4 shadow-sm border border-main">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        {% if not user.is_authenticated %}
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-uppercase tracking-wider">Your Name</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-card border-main px-3"><i class="bi bi-person text-muted"></i></span>
+                                    <input type="text" name="author_name" class="form-control form-control-modern" placeholder="How should we call you?">
+                                </div>
+                            </div>
+                        {% endif %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-uppercase tracking-wider">Join the conversation</label>
+                            <textarea name="content" class="form-control form-control-modern" rows="4" placeholder="What are your thoughts on this story?" required></textarea>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <button class="btn btn-dark btn-modern rounded-pill px-5" type="submit">
+                            Publish Response <i class="bi bi-send ms-2"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Display Comments -->
+            <!-- Display Comments -->
+            <div id="comments-wrapper" class="comments-list mt-5">
+                {% for comment in comments %}
+                    {% include "blog/_comment.html" with comment=comment is_last=forloop.last %}
+                {% empty %}
+                    <div id="no-comments-msg" class="text-center py-5">
+                        <i class="bi bi-chat-dots-fill text-muted opacity-25 display-1 mb-3"></i>
+                        <p class="text-muted small mb-0">No responses yet. Be the first to share your thoughts!</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Render Markdown
+            const rawContent = document.getElementById('article-content-raw');
+            const displayContent = document.querySelector('.article-content');
+            if (rawContent && displayContent) {
+                const renderedContent = marked.parse(rawContent.textContent);
+                displayContent.innerHTML = renderedContent;
+
+                // Apply loading skeletons to images in content
+                const postImages = displayContent.querySelectorAll('img');
+                postImages.forEach(img => {
+                    img.classList.add('loading');
+                    img.setAttribute('loading', 'lazy');
+                    img.onload = () => img.classList.remove('loading');
+                    // If already loaded from cache
+                    if (img.complete) img.classList.remove('loading');
+                });
+            }
+            
+            // --- CONSTANTS & STATE ---
+            const commentsWrapper = document.getElementById('comments-wrapper');
+            const noCommentsMsg = document.getElementById('no-comments-msg');
+            const isAuthenticated = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
+            const loginUrl = "{% url 'login' %}?next={{ request.path }}";
+            let lastCommentId = Number("{{ comments.first.id|default:0 }}");
+
+            // --- COMMENT SUBMISSION ---
+            document.addEventListener('submit', function(e) {
+                const form = e.target.closest('form');
+                if (!form) return;
+
+                // Check if this is a comment or reply form
+                const isCommentForm = form.classList.contains('comment-ajax-form') || 
+                                     (form.closest('.card-body') && form.closest('.card-body').querySelector('h3') && 
+                                      form.closest('.card-body').querySelector('h3').textContent.includes('Responses'));
+                
+                if (!isCommentForm) return;
+
+                e.preventDefault();
+                const formData = new FormData(form);
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalBtnContent = submitBtn ? submitBtn.innerHTML : 'Publish';
+                
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Publishing...';
+                }
+
+                fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                    }
+                })
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        if (data.parent_id) {
+                            const parentComment = document.getElementById('comment-' + data.parent_id);
+                            if (parentComment) {
+                                const repliesContainer = parentComment.querySelector('.replies-container');
+                                const replyHtml = '<div class="mb-4 animate-fade-in">' +
+                                    '<div class="d-flex align-items-center mb-2">' +
+                                        '<div class="fw-bold small text-main me-2">You</div>' +
+                                        '<div class="text-muted" style="font-size: 0.75rem;">Just now</div>' +
+                                    '</div>' +
+                                    '<p class="mb-0 text-muted small lh-base">' + formData.get('content') + '</p>' +
+                                '</div>';
+                                if (repliesContainer) repliesContainer.insertAdjacentHTML('beforeend', replyHtml);
+                            }
+                            const replyCollapse = document.getElementById('replyForm' + data.parent_id);
+                            if (replyCollapse && typeof bootstrap !== 'undefined') {
+                                const collapseInstance = bootstrap.Collapse.getInstance(replyCollapse);
+                                if (collapseInstance) collapseInstance.hide();
+                            }
+                        } else {
+                            if (noCommentsMsg) noCommentsMsg.remove();
+                            if (commentsWrapper) commentsWrapper.insertAdjacentHTML('afterbegin', data.html);
+                            if (data.comment_id && data.comment_id > lastCommentId) {
+                                lastCommentId = data.comment_id;
+                            }
+                        }
+                        form.reset();
+                    }
+                })
+                .catch(function(error) { console.error('Error:', error); })
+                .finally(function() {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnContent;
+                    }
+                });
+            });
+
+            // --- POLLING LOGIC ---
+            const commentCountBadge = document.getElementById('comment-count-badge');
+            const commentCountHeader = document.getElementById('comment-count-header');
+            const likeCount = document.getElementById('like-count');
+
+            function pollComments() {
+                fetch(window.location.pathname + '?last_id=' + lastCommentId, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.total_comments !== undefined) {
+                        if (commentCountBadge) commentCountBadge.textContent = data.total_comments;
+                        if (commentCountHeader) commentCountHeader.textContent = data.total_comments;
+                    }
+                    if (data.total_likes !== undefined && likeCount) {
+                        likeCount.textContent = data.total_likes;
+                    }
+                    if (data.html && data.html.trim() !== "") {
+                        if (noCommentsMsg) noCommentsMsg.remove();
+                        if (commentsWrapper) commentsWrapper.insertAdjacentHTML('afterbegin', data.html);
+                        lastCommentId = data.latest_id;
+                    }
+                })
+                .catch(function(err) { console.warn('Polling error:', err); });
+            }
+
+            // --- LIKE BUTTON LOGIC ---
+            const likeBtn = document.getElementById('like-btn');
+            if (likeBtn) {
+                const likeIcon = likeBtn.querySelector('i');
+                likeBtn.addEventListener('click', function() {
+                    if (!isAuthenticated) {
+                        window.location.href = loginUrl;
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+                    formData.append('action', 'like');
+
+                    fetch(window.location.href, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .then(function(response) { return response.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            if (likeCount) likeCount.textContent = data.total_likes;
+                            if (data.is_liked) {
+                                likeBtn.classList.remove('btn-light');
+                                likeBtn.classList.add('btn-primary', 'text-white');
+                                if (likeIcon) {
+                                    likeIcon.classList.remove('bi-hand-thumbs-up');
+                                    likeIcon.classList.add('bi-hand-thumbs-up-fill');
+                                }
+                            } else {
+                                likeBtn.classList.remove('btn-primary', 'text-white');
+                                likeBtn.classList.add('btn-light');
+                                if (likeIcon) {
+                                    likeIcon.classList.remove('bi-hand-thumbs-up-fill');
+                                    likeIcon.classList.add('bi-hand-thumbs-up');
+                                }
+                            }
+                        } else if (data.error === 'auth_required') {
+                            window.location.href = loginUrl;
+                        }
+                    });
+                });
+            }
+
+            // --- Share Story ---
+            const shareBtn = document.getElementById('share-btn');
+            if (shareBtn) {
+                shareBtn.addEventListener('click', function() {
+                    const shareData = {
+                        title: '{{ object.title }}',
+                        text: 'Check out this story on StorySpace!',
+                        url: window.location.href
+                    };
+
+                    if (navigator.share) {
+                        navigator.share(shareData)
+                            .then(() => console.log('Shared successfully'))
+                            .catch((err) => console.log('Error sharing:', err));
+                    } else {
+                        // Fallback: Copy to clipboard
+                        navigator.clipboard.writeText(window.location.href).then(() => {
+                            const originalHTML = this.innerHTML;
+                            this.innerHTML = '<i class="bi bi-check2"></i>';
+                            this.classList.replace('btn-light', 'btn-success');
+                            this.classList.add('text-white');
+                            
+                            setTimeout(() => {
+                                this.innerHTML = originalHTML;
+                                this.classList.replace('btn-success', 'btn-light');
+                                this.classList.remove('text-white');
+                            }, 2000);
+                        });
+                    }
+                });
+            }
+
+            // --- Bookmark Toggle ---
+            const bookmarkBtn = document.getElementById('bookmark-btn');
+            if (bookmarkBtn) {
+                bookmarkBtn.addEventListener('click', function() {
+                    if (!isAuthenticated) {
+                        window.location.href = loginUrl;
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('post_id', '{{ object.id }}');
+                    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+                    fetch('{% url "bookmark-toggle" %}', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.is_bookmarked) {
+                            this.classList.replace('btn-light', 'btn-primary');
+                            this.classList.add('text-white');
+                            this.querySelector('i').classList.replace('bi-bookmark', 'bi-bookmark-fill');
+                        } else {
+                            this.classList.replace('btn-primary', 'btn-light');
+                            this.classList.remove('text-white');
+                            this.querySelector('i').classList.replace('bi-bookmark-fill', 'bi-bookmark');
+                        }
+                    })
+                    .catch(err => console.warn('Bookmark error:', err));
+                });
+            }
+
+            // Start polling every 10 seconds
+            setInterval(pollComments, 10000);
+        });
+    </script>
+{% endblock %}

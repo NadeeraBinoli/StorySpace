@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - StorySpace{% endblock %}
+
+{% block content %}
+    <div class="row g-4">
+        <!-- Profile Sidebar -->
+        <div class="col-lg-4 reveal">
+            <div class="card card-minimal text-center p-4">
+                <div class="mb-4 position-relative mx-auto" style="width: 150px; height: 150px;">
+                    <div class="profile-image-outer shadow-lg">
+                        <div id="image-preview-placeholder" class="avatar-gradient w-100 h-100 d-flex justify-content-center align-items-center text-white {% if user.profile.image and user.profile.image.name != 'default.jpg' %}d-none{% endif %}" style="font-size: 3.5rem; font-weight: 700;">
+                            {{ user.username|make_list|first|upper }}
+                        </div>
+                        <img id="image-preview" 
+                             class="w-100 h-100 {% if not user.profile.image or user.profile.image.name == 'default.jpg' %}d-none{% endif %}" 
+                             style="object-fit: cover; display: block;" 
+                             src="{% if user.profile.image %}{{ user.profile.image.url }}{% endif %}" 
+                             alt="Profile Image"
+                             onerror="this.classList.add('d-none'); document.getElementById('image-preview-placeholder').classList.remove('d-none');">
+                    </div>
+                    <label for="id_image" class="avatar-upload-btn shadow-sm" title="Change Profile Picture">
+                        <i class="bi bi-camera-fill"></i>
+                    </label>
+                </div>
+                <h3 class="fw-bold mb-1">{{ user.username }}</h3>
+                <p class="text-muted mb-3">{{ user.email }}</p>
+                
+                <div class="d-flex justify-content-center gap-4 mb-4 border-top border-bottom border-main py-3">
+                    <div class="text-center">
+                        <div id="stat-posts" class="fw-bold fs-5">{{ post_count }}</div>
+                        <div class="text-muted small text-uppercase">Posts</div>
+                    </div>
+                    <div class="text-center">
+                        <div id="stat-views" class="fw-bold fs-5">{{ total_views }}</div>
+                        <div class="text-muted small text-uppercase">Views</div>
+                    </div>
+                    <div class="text-center">
+                        <div id="stat-likes" class="fw-bold fs-5">{{ total_likes }}</div>
+                        <div class="text-muted small text-uppercase">Likes</div>
+                    </div>
+                </div>
+
+                {% if user.profile.bio %}
+                    <p class="text-muted mb-4 px-2 small lh-base">{{ user.profile.bio }}</p>
+                {% else %}
+                    <p class="text-muted mb-4 px-2 small opacity-50 italic">Tell the community about yourself...</p>
+                {% endif %}
+                
+                <div class="d-grid gap-2">
+                    <a href="{% url 'post-create' %}" class="btn btn-dark btn-modern">
+                        <i class="bi bi-plus-lg me-2"></i>New Story
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const postsStat = document.getElementById('stat-posts');
+                const viewsStat = document.getElementById('stat-views');
+                const likesStat = document.getElementById('stat-likes');
+
+                function pollProfileStats() {
+                    fetch(window.location.href, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (postsStat) postsStat.textContent = data.post_count;
+                        if (viewsStat) viewsStat.textContent = data.total_views;
+                        if (likesStat) likesStat.textContent = data.total_likes;
+                    })
+                    .catch(err => console.warn('Profile polling error:', err));
+                }
+
+                setInterval(pollProfileStats, 30000);
+
+                // Image Preview Logic
+                const imageInput = document.getElementById('id_image');
+                const imagePreview = document.getElementById('image-preview');
+                const placeholder = document.getElementById('image-preview-placeholder');
+
+                if (imageInput) {
+                    imageInput.addEventListener('change', function() {
+                        const file = this.files[0];
+                        if (file) {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                if (imagePreview) {
+                                    imagePreview.src = e.target.result;
+                                    imagePreview.classList.remove('d-none');
+                                    if (placeholder) placeholder.classList.add('d-none');
+                                }
+                            }
+                            reader.readAsDataURL(file);
+                        }
+                    });
+                }
+            });
+        </script>
+
+        <!-- Profile Content Tabs -->
+        <div class="col-lg-8 reveal">
+            <ul class="nav nav-pills mb-4 bg-card p-2 rounded-4 shadow-sm border border-main d-inline-flex" id="profileTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active rounded-3 fw-bold px-4 py-2" id="posts-tab" data-bs-toggle="pill" data-bs-target="#posts" type="button" role="tab">
+                        <i class="bi bi-journal-text me-2"></i>My Stories
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link rounded-3 fw-bold px-4 py-2" id="saved-tab" data-bs-toggle="pill" data-bs-target="#saved" type="button" role="tab">
+                        <i class="bi bi-bookmark-heart me-2"></i>Saved Stories
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link rounded-3 fw-bold px-4 py-2" id="settings-tab" data-bs-toggle="pill" data-bs-target="#settings" type="button" role="tab">
+                        <i class="bi bi-gear me-2"></i>Settings
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="profileTabsContent">
+                <!-- Posts Tab -->
+                <div class="tab-pane fade show active" id="posts" role="tabpanel">
+                    <div class="posts-list">
+                        {% include "blog/_post_list.html" %}
+                    </div>
+                </div>
+
+                <!-- Saved Tab -->
+                <div class="tab-pane fade" id="saved" role="tabpanel">
+                    <div class="posts-list">
+                        {% include "blog/_post_list.html" with posts=bookmarked_posts %}
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div class="tab-pane fade" id="settings" role="tabpanel">
+                    <div class="card card-minimal p-4 p-md-5">
+                        <h4 class="fw-bold mb-4 d-flex align-items-center">
+                            <i class="bi bi-gear-fill me-3 text-primary"></i>Account Settings
+                        </h4>
+                        
+                        <form method="POST" enctype="multipart/form-data" class="modern-form">
+                            {% csrf_token %}
+                            <div class="row g-4">
+                                <div class="col-12">
+                                    <h6 class="text-uppercase small fw-bold text-muted mb-3 tracking-wider">Account Details</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="form-group-modern">
+                                                <label for="{{ u_form.username.id_for_label }}">Username</label>
+                                                {{ u_form.username }}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group-modern">
+                                                <label for="{{ u_form.email.id_for_label }}">Email Address</label>
+                                                {{ u_form.email }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+        
+                                <div class="col-12 mt-4">
+                                    <h6 class="text-uppercase small fw-bold text-muted mb-3 tracking-wider">Bio & Identity</h6>
+                                    <div class="form-group-modern">
+                                        <label for="{{ p_form.bio.id_for_label }}">About You</label>
+                                        {{ p_form.bio }}
+                                        <div class="d-none">
+                                            {{ p_form.image }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 mt-4">
+                                    <h6 class="text-uppercase small fw-bold text-muted mb-3 tracking-wider">Security</h6>
+                                    <div class="bg-light bg-opacity-50 p-4 rounded-4 border border-main">
+                                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                            <div>
+                                                <div class="fw-bold mb-1">Account Password</div>
+                                                <div class="text-muted small">Change your current password for better security.</div>
+                                            </div>
+                                            <a href="{% url 'password_change' %}" class="btn btn-outline-dark btn-sm rounded-pill px-4">
+                                                Change Password <i class="bi bi-shield-lock ms-1"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="pt-5 mt-4 border-top border-main">
+                                <button class="btn btn-dark btn-modern px-5 py-3" type="submit">
+                                    Save Changes <i class="bi bi-check2-circle ms-2"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .avatar-gradient {
+            background: linear-gradient(135deg, var(--accent-color), #6610f2);
+        }
+        .profile-image-outer {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 4px solid var(--card-bg);
+            background: var(--badge-bg);
+            position: relative;
+            transition: var(--transition);
+        }
+        .profile-image-outer:hover {
+            transform: scale(1.02);
+            border-color: var(--accent-color);
+        }
+        .avatar-upload-btn {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: var(--primary-color);
+            color: var(--bg-color);
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 3px solid var(--card-bg);
+            transition: var(--transition);
+            z-index: 10;
+        }
+        .avatar-upload-btn:hover {
+            background: var(--accent-color);
+            color: white;
+            transform: rotate(15deg);
+        }
+        
+        /* Modern Inputs */
+        .form-group-modern {
+            margin-bottom: 0.5rem;
+        }
+        .form-group-modern label {
+            display: block;
+            margin-bottom: 0.6rem;
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+        .form-group-modern input, 
+        .form-group-modern textarea, 
+        .form-group-modern select {
+            width: 100%;
+            padding: 1rem 1.2rem;
+            border-radius: 16px;
+            border: 2px solid var(--border-color);
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.95rem;
+        }
+        .form-group-modern textarea {
+            min-height: 120px;
+            resize: none;
+        }
+        .form-group-modern input:focus, 
+        .form-group-modern textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            background-color: var(--card-bg);
+            box-shadow: 0 8px 30px rgba(13, 110, 253, 0.08);
+            transform: translateY(-1px);
+        }
+        
+        .tracking-wider {
+            letter-spacing: 0.1em;
+        }
+
+        /* Custom Tabs */
+        .nav-pills .nav-link {
+            color: var(--text-muted);
+            transition: var(--transition);
+        }
+        .nav-pills .nav-link.active {
+            background-color: var(--primary-color) !important;
+            color: var(--bg-color) !important;
+        }
+        [data-theme="dark"] .nav-pills .nav-link.active {
+            color: var(--bg-color) !important;
+        }
+        .nav-pills .nav-link:hover:not(.active) {
+            background-color: var(--border-color);
+            color: var(--text-main);
+        }
+    </style>
+{% endblock %}

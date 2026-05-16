@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="row mb-5 py-5 align-items-center rounded-5 shadow-sm px-4 px-md-5 reveal" style="background-color: var(--card-bg); border: 1px solid var(--border-color);">
+    <div class="col-lg-7">
+        <h1 class="display-5 fw-bold mb-3" style="letter-spacing: -1.5px; line-height: 1.1;">
+            Write. Read. <span class="text-primary">Connect.</span>
+        </h1>
+        <p class="lead text-muted mb-4 fs-6">Explore a world of stories, insights, and perspectives from a community of
+            curious minds.</p>
+        <div class="d-flex gap-3 flex-wrap">
+            {% if not user.is_authenticated %}
+            <a href="{% url 'register' %}" class="btn btn-dark btn-modern px-4 py-3">Start Writing</a>
+            {% endif %}
+            <a href="#posts-start" class="btn btn-outline-dark btn-modern px-4 py-3">Explore Stories</a>
+        </div>
+    </div>
+    <div class="col-lg-5 d-none d-lg-block">
+        <div class="position-relative">
+            <div class="bg-primary rounded-circle position-absolute top-0 start-0 w-100 h-100 opacity-10 animate-pulse"
+                style="filter: blur(80px);"></div>
+            <img src="https://img.freepik.com/free-vector/blogging-concept-illustration_114360-788.jpg"
+                class="img-fluid position-relative z-1" alt="Hero Image">
+        </div>
+    </div>
+</div>
+
+<!-- Search & Filter Bar -->
+<div id="posts-start" class="mb-5 sticky-top py-3 reveal"
+    style="top: 70px; z-index: 900; backdrop-filter: blur(10px); border-radius: 20px; background-color: var(--navbar-bg); border: 1px solid var(--border-color);">
+
+    <!-- Search Area (Now First) -->
+    <div class="px-3 mb-3">
+        <div class="position-relative search-box mx-auto" style="max-width: 800px;">
+            <input id="search-input" class="form-control form-control-modern ps-5 pe-5 shadow-sm" type="search" name="q"
+                placeholder="Search for stories, authors..." value="{{ request.GET.q }}" autocomplete="off">
+            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+            <button id="clear-search" type="button"
+                class="btn btn-link position-absolute top-50 end-0 translate-middle-y me-2 text-muted p-2 {% if not request.GET.q %}d-none{% endif %}"
+                style="border: none; text-decoration: none; color: #555 !important; z-index: 10; cursor: pointer;">
+                <i class="bi bi-x-circle-fill fs-5"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Categories Area (Now Second) -->
+    <div class="px-3">
+        <div class="category-scroll-container">
+            <div class="category-chips d-flex justify-content-md-center">
+                <a href="{% url 'blog-home' %}" class="chip {% if not request.GET.category %}active{% endif %}">All</a>
+                {% for cat in categories %}
+                <a href="{% url 'blog-home' %}?category={{ cat.name }}"
+                    class="chip {% if request.GET.category == cat.name %}active{% endif %}">{{ cat.name }}</a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="post-container" class="post-list">
+    {% include "blog/_post_list.html" %}
+</div>
+
+<!-- AJAX Skeleton Loader (Handled via JS) -->
+<div id="skeleton-loader" style="display: none;">
+    <div class="skeleton-post">
+        <div class="d-flex align-items-center mb-4">
+            <div class="skeleton skeleton-avatar me-3"></div>
+            <div class="skeleton" style="width: 150px; height: 20px;"></div>
+        </div>
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-text"></div>
+        <div class="skeleton skeleton-text"></div>
+        <div class="skeleton skeleton-text" style="width: 60%;"></div>
+    </div>
+</div>
+
+<!-- Pagination -->
+<div id="pagination-container">
+    {% if is_paginated %}
+    <nav class="d-flex justify-content-center mt-5 reveal">
+        <ul class="pagination pagination-modern shadow-sm">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link"
+                    href="?page=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}"><i
+                        class="bi bi-chevron-double-left"></i></a></li>
+            <li class="page-item"><a class="page-link"
+                    href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}"><i
+                        class="bi bi-chevron-left"></i></a></li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">{{ num }}</a>
+                </li>
+            {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link"
+                        href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}"><i
+                            class="bi bi-chevron-right"></i></a></li>
+                <li class="page-item"><a class="page-link"
+                        href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}"><i
+                            class="bi bi-chevron-double-right"></i></a></li>
+                {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('search-input');
+        const postContainer = document.getElementById('post-container');
+        const paginationContainer = document.getElementById('pagination-container');
+        const skeletonLoader = document.getElementById('skeleton-loader');
+
+        let debounceTimer;
+
+        function performSearch() {
+            const query = searchInput.value;
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentCategory = urlParams.get('category') || '';
+
+            const url = `${window.location.pathname}?q=${encodeURIComponent(query)}&category=${encodeURIComponent(currentCategory)}`;
+
+            // Show skeletons, hide real posts
+            postContainer.style.opacity = '0.3';
+            skeletonLoader.style.display = 'block';
+
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    skeletonLoader.style.display = 'none';
+                    postContainer.style.opacity = '1';
+                    postContainer.innerHTML = data.html;
+
+                    // Immediately force visibility for AJAX results to bypass scroll-reveal delay
+                    const newCards = postContainer.querySelectorAll('.reveal');
+                    newCards.forEach(card => {
+                        card.style.visibility = 'visible';
+                        card.style.opacity = '1';
+                        card.classList.remove('reveal'); // Prevent scrollreveal from hiding them again
+                        card.classList.add('animate-fade-in');
+                    });
+
+                    if (query.trim() !== "") {
+                        paginationContainer.style.display = 'none';
+                    } else {
+                        paginationContainer.style.display = 'block';
+                    }
+                })
+                .catch(err => {
+                    console.warn('Search error:', err);
+                    skeletonLoader.style.display = 'none';
+                    postContainer.style.opacity = '1';
+                });
+        }
+
+        if (searchInput) {
+            const clearSearchBtn = document.getElementById('clear-search');
+
+            searchInput.addEventListener('input', function () {
+                // Show/hide clear button using classList to properly override d-none
+                if (this.value.length > 0) {
+                    clearSearchBtn.classList.remove('d-none');
+                } else {
+                    clearSearchBtn.classList.add('d-none');
+                }
+
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(performSearch, 300);
+            });
+
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', function () {
+                    searchInput.value = '';
+                    this.classList.add('d-none');
+                    searchInput.focus();
+                    performSearch();
+                });
+            }
+
+            // Handle Category AJAX Filtering
+            const chips = document.querySelectorAll('.chip');
+            chips.forEach(chip => {
+                chip.addEventListener('click', function (e) {
+                    e.preventDefault();
+
+                    // Update active state visually
+                    chips.forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+
+                    // Update URL without reloading
+                    const url = new URL(this.href);
+                    window.history.pushState({}, '', url);
+
+                    // Perform the AJAX fetch
+                    performSearch();
+                });
+            });
+
+            const searchForm = searchInput.closest('form');
+            if (searchForm) {
+                searchForm.addEventListener('submit', (e) => e.preventDefault());
+            }
+        }
+    });
+</script>
+
+<style>
+    .animate-fade-in {
+        animation: fadeIn 0.4s ease forwards;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+
+    /* Category Scroll Styles */
+    .category-scroll-container {
+        overflow-x: auto;
+        white-space: nowrap;
+        -ms-overflow-style: none;
+        /* IE and Edge */
+        scrollbar-width: none;
+        /* Firefox */
+        padding: 5px 0;
+    }
+
+    .category-scroll-container::-webkit-scrollbar {
+        display: none;
+        /* Chrome, Safari and Opera */
+    }
+
+    .category-chips {
+        display: inline-flex;
+        gap: 10px;
+    }
+
+    .chip {
+        display: inline-block;
+        padding: 8px 20px;
+        background-color: var(--badge-bg);
+        color: var(--text-muted);
+        border-radius: 50px;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid var(--border-color);
+    }
+
+    .chip:hover {
+        background-color: var(--border-color);
+        color: var(--text-main);
+        transform: translateY(-2px);
+    }
+
+    .chip.active {
+        background-color: var(--accent-color);
+        color: #fff;
+        border-color: var(--accent-color);
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+    }
+</style>
+<style>
+    .post-title-hover {
+        transition: color 0.2s ease;
+    }
+
+    .post-title-hover:hover {
+        color: var(--accent-color) !important;
+    }
+
+    .search-box input:focus {
+        transform: scale(1.02);
+        background: var(--card-bg);
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(0.95);
+            opacity: 0.1;
+        }
+
+        50% {
+            transform: scale(1.05);
+            opacity: 0.2;
+        }
+
+        100% {
+            transform: scale(0.95);
+            opacity: 0.1;
+        }
+    }
+
+    .animate-pulse {
+        animation: pulse 4s infinite ease-in-out;
+    }
+
+    /* Hide default search "X" from browser */
+    input[type="search"]::-webkit-search-decoration,
+    input[type="search"]::-webkit-search-cancel-button,
+    input[type="search"]::-webkit-search-results-button,
+    input[type="search"]::-webkit-search-results-decoration {
+        display: none;
+    }
+
+    /* Improved Clear Button Hover */
+    #clear-search {
+        color: #888 !important;
+        transition: all 0.2s ease;
+    }
+
+    #clear-search:hover {
+        color: #495057 !important;
+        transform: translateY(-50%) scale(1.1);
+    }
+</style>
+{% endblock %}

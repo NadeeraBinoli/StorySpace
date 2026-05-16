@@ -1,0 +1,78 @@
+<div class="mb-5 pb-5 {% if not is_last %}border-bottom border-main{% endif %} animate-fade-in" id="comment-{{ comment.id }}">
+    <div class="d-flex align-items-center mb-3">
+        <div class="position-relative me-3">
+            <div class="rounded-circle avatar-gradient d-flex align-items-center justify-content-center text-white shadow-sm {% if comment.user.profile.image and comment.user.profile.image.name != 'default.jpg' %}d-none{% endif %}" style="width: 38px; height: 38px;">
+                <span class="fw-bold small">
+                    {% if comment.user %}
+                        {{ comment.user.username|make_list|first|upper }}
+                    {% else %}
+                        {{ comment.author_name|default:"A"|make_list|first|upper }}
+                    {% endif %}
+                </span>
+            </div>
+            {% if comment.user.profile.image and comment.user.profile.image.name != 'default.jpg' %}
+                <img src="{{ comment.user.profile.image.url }}" class="rounded-circle shadow-sm" style="width: 38px; height: 38px; object-fit: cover;" onerror="this.classList.add('d-none'); this.previousElementSibling.classList.remove('d-none');">
+            {% endif %}
+        </div>
+        <div>
+            <div class="fw-bold text-main small">
+                {% if comment.user %}
+                    {{ comment.user.username }}
+                {% else %}
+                    {{ comment.author_name|default:"Anonymous" }}
+                {% endif %}
+            </div>
+            <div class="text-muted small d-flex align-items-center gap-2">
+                <i class="bi bi-clock"></i>{{ comment.created_at|timesince }} ago
+            </div>
+        </div>
+    </div>
+    <p class="mb-3 text-main small lh-base">{{ comment.content }}</p>
+    
+    <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-sm text-muted p-0 text-decoration-none fw-bold small" type="button" data-bs-toggle="collapse" data-bs-target="#replyForm{{ comment.id }}">
+            <i class="bi bi-reply me-1"></i>Reply
+        </button>
+        <button class="btn btn-sm text-muted p-0 text-decoration-none fw-bold small">
+            <i class="bi bi-hand-thumbs-up me-1"></i>Helpful
+        </button>
+    </div>
+    
+    <!-- Reply Form -->
+    <div class="collapse mt-4" id="replyForm{{ comment.id }}">
+        <form method="POST" class="comment-ajax-form bg-card p-4 rounded-4 shadow-sm border border-main">
+            {% csrf_token %}
+            <input type="hidden" name="parent_id" value="{{ comment.id }}">
+            <div class="mb-3">
+                {% if not user.is_authenticated %}
+                    <input type="text" name="author_name" class="form-control form-control-modern form-control-sm mb-3" placeholder="Your name...">
+                {% endif %}
+                <textarea name="content" class="form-control form-control-modern form-control-sm" rows="3" required placeholder="Write your reply..."></textarea>
+            </div>
+            <div class="text-end">
+                <button class="btn btn-primary btn-sm rounded-pill px-4" type="submit">Post Reply</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Display Replies -->
+    <div class="replies-container ms-4 mt-4 ps-4 border-start border-3 border-main">
+        {% if comment.replies.all %}
+            {% for reply in comment.replies.all %}
+                <div class="mb-4">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="fw-bold small text-main me-2">
+                            {% if reply.user %}
+                                {{ reply.user.username }}
+                            {% else %}
+                                {{ reply.author_name|default:"Anonymous" }}
+                            {% endif %}
+                        </div>
+                        <div class="text-muted" style="font-size: 0.75rem;">{{ reply.created_at|timesince }} ago</div>
+                    </div>
+                    <p class="mb-0 text-muted small lh-base">{{ reply.content }}</p>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</div>
