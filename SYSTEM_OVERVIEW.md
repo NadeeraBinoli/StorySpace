@@ -1,5 +1,7 @@
 # System Overview & Features Guide
 
+**GitHub Repository:** [https://github.com/NadeeraBinoli/StorySpace](https://github.com/NadeeraBinoli/StorySpace)
+
 ## Core Features
 
 ### 1. User Authentication & Profile

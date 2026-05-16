@@ -1,5 +1,7 @@
 # StorySpace - Advanced Blog System (ECU4311)
 
+**GitHub Repository:** [https://github.com/NadeeraBinoli/StorySpace](https://github.com/NadeeraBinoli/StorySpace)
+
 A full-featured blog application built with Django 5.0, focusing on modern UI/UX, real-time interactions, and secure authentication.
 
 ## Setup Instructions

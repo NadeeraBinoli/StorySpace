@@ -62,6 +62,7 @@
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
             letter-spacing: -0.01em;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         h1, h2, h3, h4, h5, h6 {
@@ -446,9 +447,19 @@
             background-size: 200% 100%;
             animation: shimmer 1.5s infinite linear;
         }
+
+        /* Dark Mode Image Adjustments */
+        [data-theme="dark"] img {
+            filter: brightness(0.85) contrast(1.05);
+            transition: filter 0.3s ease;
+        }
+
+        [data-theme="dark"] img:hover {
+            filter: brightness(1) contrast(1);
+        }
     </style>
 </head>
-<body class="bg-light">
+<body>
     <!-- Global Preloader Skeleton -->
     <div id="global-loader">
         <div class="container" style="max-width: 800px;">
